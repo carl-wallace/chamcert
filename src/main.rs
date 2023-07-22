@@ -2,12 +2,17 @@ use crate::args::ChamCertArgs;
 use crate::utils::configure_logging;
 use clap::Parser;
 use crate::base::generate_base;
+use crate::check::check;
 use crate::request::generate_request;
 
-mod args;
-mod utils;
-mod base;
-mod request;
+pub mod args;
+pub mod utils;
+pub mod base;
+pub mod request;
+pub mod dcd;
+pub mod keygen;
+pub mod pqc_oids;
+pub mod check;
 
 /// Error type for chamcert
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -23,6 +28,12 @@ pub enum Error {
     Asn1(der::Error),
     Signature,
     MissingParameter,
+    KeyError,
+}
+impl From<der::Error> for Error {
+    fn from(err: der::Error) -> Error {
+        Error::Asn1(err)
+    }
 }
 
 /// Result type for chamcert
@@ -42,7 +53,12 @@ fn main() {
             println!("Failed: {:?}", e);
         }
     }
+    else if args.check.is_some() {
+        if let Err(e) = check(&args) {
+            println!("Failed: {:?}", e);
+        }
+    }
     else {
-        println!("ERROR: you must specify either --base or --csr along with required options");
+        println!("ERROR: you must specify either --base, --check or --csr along with required options");
     }
 }

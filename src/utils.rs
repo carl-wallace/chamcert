@@ -3,6 +3,7 @@
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use const_oid::ObjectIdentifier;
 use crate::args::ChamCertArgs;
 use log::LevelFilter;
 use log4rs::{
@@ -10,7 +11,20 @@ use log4rs::{
     config::{Appender, Config, Root},
     encode::pattern::PatternEncoder,
 };
+#[cfg(feature = "pqc")]
+use pqcrypto_dilithium::*;
+#[cfg(feature = "pqc")]
+use pqcrypto_falcon::{falcon1024, falcon512};
+#[cfg(feature = "pqc")]
+use pqcrypto_sphincsplus::*;
+#[cfg(feature = "pqc")]
+use pqcrypto_traits::sign::SecretKey;
+use subtle_encoding::hex;
 use crate::Error;
+use crate::keygen::*;
+use pqcrypto_traits::sign::DetachedSignature;
+use p256::ecdsa::{signature::Signer, Signature};
+use p256::pkcs8::DecodePrivateKey;
 
 /// Configures logging per logging-related elements of the provided [PbYkArgs] instance
 pub(crate) fn configure_logging(args: &ChamCertArgs) {
@@ -68,4 +82,130 @@ pub fn get_file_as_byte_vec(filename: &Path) -> crate::Result<Vec<u8>> {
         },
         Err(_e) => Err(Error::Unrecognized),
     }
+}
+
+/// Takes a buffer and returns a String containing an ASCII hex representation of the buffer's contents
+pub fn buffer_to_hex(buffer: &[u8]) -> String {
+    let hex = hex::encode_upper(buffer);
+    let r = std::str::from_utf8(hex.as_slice());
+    if let Ok(s) = r {
+        s.to_string()
+    } else {
+        "".to_string()
+    }
+}
+
+pub fn generate_signature(
+    spki_algorithm: &ObjectIdentifier,
+    signing_key_bytes: &[u8],
+    tbs_cert: &[u8],
+) -> Vec<u8> {
+    let s = if is_diluthium2(spki_algorithm) {
+        let sk = SecretKey::from_bytes(signing_key_bytes).unwrap();
+        let sm = dilithium2::detached_sign(tbs_cert, &sk);
+        sm.as_bytes().to_vec()
+    } else if is_diluthium3(spki_algorithm) {
+        let sk = SecretKey::from_bytes(signing_key_bytes).unwrap();
+        let sm = dilithium3::detached_sign(tbs_cert, &sk);
+        sm.as_bytes().to_vec()
+    } else if is_diluthium5(spki_algorithm) {
+        let sk = SecretKey::from_bytes(signing_key_bytes).unwrap();
+        let sm = dilithium5::detached_sign(tbs_cert, &sk);
+        sm.as_bytes().to_vec()
+    } else if is_diluthium2aes(spki_algorithm) {
+        let sk = SecretKey::from_bytes(signing_key_bytes).unwrap();
+        let sm = dilithium2aes::detached_sign(tbs_cert, &sk);
+        sm.as_bytes().to_vec()
+    } else if is_diluthium3aes(spki_algorithm) {
+        let sk = SecretKey::from_bytes(signing_key_bytes).unwrap();
+        let sm = dilithium3aes::detached_sign(tbs_cert, &sk);
+        sm.as_bytes().to_vec()
+    } else if is_diluthium5aes(spki_algorithm) {
+        let sk = SecretKey::from_bytes(signing_key_bytes).unwrap();
+        let sm = dilithium5aes::detached_sign(tbs_cert, &sk);
+        sm.as_bytes().to_vec()
+    } else if is_falcon512(spki_algorithm) {
+        // let (pk, sk) = falcon512::keypair();
+        let sk = SecretKey::from_bytes(signing_key_bytes).unwrap();
+        let sm = falcon512::detached_sign(tbs_cert, &sk);
+        sm.as_bytes().to_vec()
+    } else if is_falcon1024(spki_algorithm) {
+        // let (pk, sk) = falcon1024::keypair();
+        let sk = SecretKey::from_bytes(signing_key_bytes).unwrap();
+        let sm = falcon1024::detached_sign(tbs_cert, &sk);
+        sm.as_bytes().to_vec()
+    } else if is_sphincsp_sha256_128f_robust(spki_algorithm) {
+        // let (pk, sk) = sphincssha256128frobust::keypair();
+        let sk = SecretKey::from_bytes(signing_key_bytes).unwrap();
+        let sm = sphincssha256128frobust::detached_sign(tbs_cert, &sk);
+        sm.as_bytes().to_vec()
+    } else if is_sphincsp_sha256_128f_simple(spki_algorithm) {
+        // let (pk, sk) = sphincssha256128fsimple::keypair();
+        let sk = SecretKey::from_bytes(signing_key_bytes).unwrap();
+        let sm = sphincssha256128fsimple::detached_sign(tbs_cert, &sk);
+        sm.as_bytes().to_vec()
+    } else if is_sphincsp_sha256_128s_robust(spki_algorithm) {
+        // let (pk, sk) = sphincssha256128srobust::keypair();
+        let sk = SecretKey::from_bytes(signing_key_bytes).unwrap();
+        let sm = sphincssha256128srobust::detached_sign(tbs_cert, &sk);
+        sm.as_bytes().to_vec()
+    } else if is_sphincsp_sha256_128s_simple(spki_algorithm) {
+        // let (pk, sk) = sphincssha256128ssimple::keypair();
+        let sk = SecretKey::from_bytes(signing_key_bytes).unwrap();
+        let sm = sphincssha256128ssimple::detached_sign(tbs_cert, &sk);
+        sm.as_bytes().to_vec()
+    } else if is_sphincsp_sha256_192f_robust(spki_algorithm) {
+        // let (pk, sk) = sphincssha256192frobust::keypair();
+        let sk = SecretKey::from_bytes(signing_key_bytes).unwrap();
+        let sm = sphincssha256192frobust::detached_sign(tbs_cert, &sk);
+        sm.as_bytes().to_vec()
+    } else if is_sphincsp_sha256_192f_simple(spki_algorithm) {
+        // let (pk, sk) = sphincssha256192fsimple::keypair();
+        let sk = SecretKey::from_bytes(signing_key_bytes).unwrap();
+        let sm = sphincssha256192fsimple::detached_sign(tbs_cert, &sk);
+        sm.as_bytes().to_vec()
+    } else if is_sphincsp_sha256_192s_robust(spki_algorithm) {
+        // let (pk, sk) = sphincssha256192srobust::keypair();
+        let sk = SecretKey::from_bytes(signing_key_bytes).unwrap();
+        let sm = sphincssha256192srobust::detached_sign(tbs_cert, &sk);
+        sm.as_bytes().to_vec()
+    } else if is_sphincsp_sha256_192s_simple(spki_algorithm) {
+        // let (pk, sk) = sphincssha256192ssimple::keypair();
+        let sk = SecretKey::from_bytes(signing_key_bytes).unwrap();
+        let sm = sphincssha256192ssimple::detached_sign(tbs_cert, &sk);
+        sm.as_bytes().to_vec()
+    } else if is_sphincsp_sha256_256f_robust(spki_algorithm) {
+        // let (pk, sk) = sphincssha256256frobust::keypair();
+        let sk = SecretKey::from_bytes(signing_key_bytes).unwrap();
+        let sm = sphincssha256256frobust::detached_sign(tbs_cert, &sk);
+        sm.as_bytes().to_vec()
+    } else if is_sphincsp_sha256_256f_simple(spki_algorithm) {
+        // let (pk, sk) = sphincssha256256fsimple::keypair();
+        let sk = SecretKey::from_bytes(signing_key_bytes).unwrap();
+        let sm = sphincssha256256fsimple::detached_sign(tbs_cert, &sk);
+        sm.as_bytes().to_vec()
+    } else if is_sphincsp_sha256_256s_robust(spki_algorithm) {
+        // let (pk, sk) = sphincssha256256srobust::keypair();
+        let sk = SecretKey::from_bytes(signing_key_bytes).unwrap();
+        let sm = sphincssha256256srobust::detached_sign(tbs_cert, &sk);
+        sm.as_bytes().to_vec()
+    } else if is_sphincsp_sha256_256s_simple(spki_algorithm) {
+        // let (pk, sk) = sphincssha256256ssimple::keypair();
+        let sk = SecretKey::from_bytes(signing_key_bytes).unwrap();
+        let sm = sphincssha256256ssimple::detached_sign(tbs_cert, &sk);
+        sm.as_bytes().to_vec()
+    } else if is_ecdsa(spki_algorithm) {
+        //todo don't require p256 CA signing
+        let secret_key = p256::SecretKey::from_pkcs8_der(&signing_key_bytes).unwrap();
+        let signing_key = ecdsa::SigningKey::from(secret_key);
+
+        //let signing_key = SigningKey::from_bytes(signing_key_bytes).unwrap();
+
+        let ecsignature: Signature = signing_key.sign(tbs_cert);
+        let derecsignature = ecsignature.to_der();
+        derecsignature.as_bytes().to_vec()
+    } else {
+        panic!()
+    };
+    s
 }

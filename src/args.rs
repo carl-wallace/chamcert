@@ -76,7 +76,6 @@ pub struct ChamCertArgs {
     long,
     action,
     help_heading = "Chameleon Certificate Signing Request Generation",
-    requires = "request",
     )]
     pub template_cert: Option<String>,
 
