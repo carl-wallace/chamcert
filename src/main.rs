@@ -2,12 +2,12 @@ use crate::args::ChamCertArgs;
 use crate::utils::configure_logging;
 use clap::Parser;
 use crate::base::generate_base;
-use crate::csr::generate_csr;
+use crate::request::generate_request;
 
 mod args;
 mod utils;
 mod base;
-mod csr;
+mod request;
 
 /// Error type for chamcert
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -37,8 +37,8 @@ fn main() {
             println!("Failed: {:?}", e);
         }
     }
-    else if args.csr.is_some() {
-        if let Err(e) = generate_csr(&args) {
+    else if args.request.is_some() {
+        if let Err(e) = generate_request(&args) {
             println!("Failed: {:?}", e);
         }
     }

@@ -61,26 +61,13 @@ pub struct ChamCertArgs {
     long,
     action,
     help_heading = "Chameleon Certificate Generation",
-    conflicts_with = "csr",
+    conflicts_with = "request",
+    conflicts_with = "check",
     requires = "delta",
     requires = "ca_cert",
     requires = "ca_key",
     )]
     pub base: Option<String>,
-
-    /// Full path and filename of file to receive freshly generated CSR containing deltaCertificateRequest
-    /// attribute
-    #[clap(
-    short='r',
-    long,
-    action,
-    help_heading = "Chameleon CSR Generation",
-    conflicts_with = "base",
-    conflicts_with = "delta",
-    conflicts_with = "ca_cert",
-    conflicts_with = "ca_key",
-    )]
-    pub csr: Option<String>,
 
     /// Full path and filename of file containing certificate that serves as a template for CSR
     /// generation (only the public key will be changed)
@@ -88,11 +75,46 @@ pub struct ChamCertArgs {
     short,
     long,
     action,
-    help_heading = "Chameleon CSR Generation",
-    conflicts_with = "base",
-    conflicts_with = "delta",
-    conflicts_with = "ca_cert",
-    conflicts_with = "ca_key",
+    help_heading = "Chameleon Certificate Signing Request Generation",
+    requires = "request",
     )]
     pub template_cert: Option<String>,
+
+    /// Full path and filename of file to receive freshly generated certificate signing request
+    /// containing deltaCertificateRequest attribute
+    #[clap(
+    short='q',
+    long,
+    action,
+    help_heading = "Chameleon Certificate Signing Request Generation",
+    requires = "template_cert",
+    conflicts_with = "base",
+    conflicts_with = "check",
+    )]
+    pub request: Option<String>,
+
+    /// Full path and filename of certificate that should match the certificate rehydrated from the
+    /// check certificate
+    #[clap(
+    short,
+    long,
+    action,
+    help_heading = "Chameleon Certificate Extension Check",
+    requires = "check",
+    )]
+    pub reference: Option<String>,
+
+    /// Full path and filename of file to receive freshly generated base certificate containing a
+    /// deltaCertificateDescriptor extension
+    #[clap(
+    short='v',
+    long,
+    action,
+    help_heading = "Chameleon Certificate Extension Check",
+    requires = "reference",
+    conflicts_with = "base",
+    conflicts_with = "request",
+    )]
+    pub check: Option<String>,
+
 }
