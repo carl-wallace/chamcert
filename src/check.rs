@@ -1,16 +1,18 @@
-use std::path::Path;
-use der::{Decode, Encode};
-use x509_cert::Certificate;
 use crate::args::ChamCertArgs;
+use crate::dcd::{DeltaCertificateDescriptor, ID_CE_DELTA_CERTIFICATE_DESCRIPTOR};
 use crate::utils::{buffer_to_hex, get_file_as_byte_vec};
 use crate::{Error, Result};
-use crate::dcd::{DeltaCertificateDescriptor, ID_CE_DELTA_CERTIFICATE_DESCRIPTOR};
+use der::{Decode, Encode};
+use std::path::Path;
+use x509_cert::Certificate;
 
 fn get_dcd(cert: &Certificate) -> Result<DeltaCertificateDescriptor> {
     if let Some(exts) = &cert.tbs_certificate.extensions {
         for ext in exts {
             if ext.extn_id == ID_CE_DELTA_CERTIFICATE_DESCRIPTOR {
-                return Ok(DeltaCertificateDescriptor::from_der(&ext.extn_value.as_bytes())?)
+                return Ok(DeltaCertificateDescriptor::from_der(
+                    ext.extn_value.as_bytes(),
+                )?);
             }
         }
     }
@@ -87,7 +89,7 @@ fn reconstruct(base: &Certificate) -> Result<Certificate> {
             return Err(Error::Unrecognized);
         }
 
-        let mut new_exts = initial_delta.tbs_certificate.extensions.unwrap().clone();
+        let mut new_exts = initial_delta.tbs_certificate.extensions.unwrap();
         for ext in exts {
             let mut found = false;
             for text in new_exts.iter_mut() {
@@ -114,11 +116,11 @@ fn reconstruct(base: &Certificate) -> Result<Certificate> {
 pub fn check(args: &ChamCertArgs) -> Result<()> {
     let base_cert_bytes = match &args.check {
         Some(check) => get_file_as_byte_vec(Path::new(check)),
-        None => return Err(Error::MissingParameter)
+        None => return Err(Error::MissingParameter),
     }?;
     let delta_cert_bytes = match &args.reference {
         Some(reference) => get_file_as_byte_vec(Path::new(reference)),
-        None => return Err(Error::MissingParameter)
+        None => return Err(Error::MissingParameter),
     }?;
 
     let base_cert = Certificate::from_der(&base_cert_bytes)?;
@@ -129,8 +131,7 @@ pub fn check(args: &ChamCertArgs) -> Result<()> {
         println!("Reference cert: {}", buffer_to_hex(&delta_cert_bytes));
         println!("Reconstructed : {}", buffer_to_hex(&reconstructed_bytes));
         return Err(Error::Unrecognized);
-    }
-    else {
+    } else {
         println!("Reconstructed certificate matches the reference");
     }
 

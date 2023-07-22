@@ -21,8 +21,8 @@ use sha1::{Digest, Sha1};
 use spki::{AlgorithmIdentifierOwned, SubjectPublicKeyInfoOwned};
 
 use certval::{
-    PKIXALG_ECDSA_WITH_SHA224, PKIXALG_ECDSA_WITH_SHA256,
-    PKIXALG_ECDSA_WITH_SHA384, PKIXALG_ECDSA_WITH_SHA512, PKIXALG_EC_PUBLIC_KEY, PKIXALG_SECP256R1,
+    PKIXALG_ECDSA_WITH_SHA224, PKIXALG_ECDSA_WITH_SHA256, PKIXALG_ECDSA_WITH_SHA384,
+    PKIXALG_ECDSA_WITH_SHA512, PKIXALG_EC_PUBLIC_KEY, PKIXALG_SECP256R1,
 };
 use const_oid::ObjectIdentifier;
 use pqckeys::pqc_oids::*;
@@ -164,7 +164,7 @@ pub fn generate_keypair(
         spki_algs.push(spki_algorithm.to_der().unwrap());
 
         #[cfg(feature = "pqc")]
-            let (pk, sk) = if is_diluthium2(&pk_alg1) {
+        let (pk, sk) = if is_diluthium2(&pk_alg1) {
             let (pk, sk) = dilithium2::keypair();
             (pk.as_bytes().to_vec(), sk.as_bytes().to_vec())
         } else if is_diluthium3(&pk_alg1) {

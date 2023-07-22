@@ -1,18 +1,18 @@
 use crate::args::ChamCertArgs;
-use crate::utils::configure_logging;
-use clap::Parser;
 use crate::base::generate_base;
 use crate::check::check;
 use crate::request::generate_request;
+use crate::utils::configure_logging;
+use clap::Parser;
 
 pub mod args;
-pub mod utils;
 pub mod base;
-pub mod request;
+pub mod check;
 pub mod dcd;
 pub mod keygen;
 pub mod pqc_oids;
-pub mod check;
+pub mod request;
+pub mod utils;
 
 /// Error type for chamcert
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -47,18 +47,17 @@ fn main() {
         if let Err(e) = generate_base(&args) {
             println!("Failed: {:?}", e);
         }
-    }
-    else if args.request.is_some() {
+    } else if args.request.is_some() {
         if let Err(e) = generate_request(&args) {
             println!("Failed: {:?}", e);
         }
-    }
-    else if args.check.is_some() {
+    } else if args.check.is_some() {
         if let Err(e) = check(&args) {
             println!("Failed: {:?}", e);
         }
-    }
-    else {
-        println!("ERROR: you must specify either --base, --check or --csr along with required options");
+    } else {
+        println!(
+            "ERROR: you must specify either --base, --check or --csr along with required options"
+        );
     }
 }

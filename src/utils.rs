@@ -1,30 +1,30 @@
 //! Utility functions used by the pbyk utility
 
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
-use const_oid::ObjectIdentifier;
 use crate::args::ChamCertArgs;
+use crate::keygen::*;
+use crate::Error;
+use const_oid::ObjectIdentifier;
 use log::LevelFilter;
 use log4rs::{
     append::console::ConsoleAppender,
     config::{Appender, Config, Root},
     encode::pattern::PatternEncoder,
 };
+use p256::ecdsa::{signature::Signer, Signature};
+use p256::pkcs8::DecodePrivateKey;
 #[cfg(feature = "pqc")]
 use pqcrypto_dilithium::*;
 #[cfg(feature = "pqc")]
 use pqcrypto_falcon::{falcon1024, falcon512};
 #[cfg(feature = "pqc")]
 use pqcrypto_sphincsplus::*;
+use pqcrypto_traits::sign::DetachedSignature;
 #[cfg(feature = "pqc")]
 use pqcrypto_traits::sign::SecretKey;
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
 use subtle_encoding::hex;
-use crate::Error;
-use crate::keygen::*;
-use pqcrypto_traits::sign::DetachedSignature;
-use p256::ecdsa::{signature::Signer, Signature};
-use p256::pkcs8::DecodePrivateKey;
 
 /// Configures logging per logging-related elements of the provided [PbYkArgs] instance
 pub(crate) fn configure_logging(args: &ChamCertArgs) {
@@ -196,7 +196,7 @@ pub fn generate_signature(
         sm.as_bytes().to_vec()
     } else if is_ecdsa(spki_algorithm) {
         //todo don't require p256 CA signing
-        let secret_key = p256::SecretKey::from_pkcs8_der(&signing_key_bytes).unwrap();
+        let secret_key = p256::SecretKey::from_pkcs8_der(signing_key_bytes).unwrap();
         let signing_key = ecdsa::SigningKey::from(secret_key);
 
         //let signing_key = SigningKey::from_bytes(signing_key_bytes).unwrap();

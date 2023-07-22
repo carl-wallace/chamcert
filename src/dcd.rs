@@ -12,7 +12,8 @@ use x509_cert::time::Validity;
 ///    joint-iso-itu-t(2) country(16) us(840) organization(1)
 ///    entrust(114027) 80 6 1
 /// }
-pub const ID_CE_DELTA_CERTIFICATE_DESCRIPTOR: ObjectIdentifier = ObjectIdentifier::new_unwrap("2.16.840.1.114027.80.6.1");
+pub const ID_CE_DELTA_CERTIFICATE_DESCRIPTOR: ObjectIdentifier =
+    ObjectIdentifier::new_unwrap("2.16.840.1.114027.80.6.1");
 
 /// DeltaCertificateDescriptor ::= SEQUENCE {
 ///   serialNumber          CertificateSerialNumber,
@@ -28,7 +29,7 @@ pub const ID_CE_DELTA_CERTIFICATE_DESCRIPTOR: ObjectIdentifier = ObjectIdentifie
 /// }
 #[derive(Clone, Debug, Eq, PartialEq, Sequence, ValueOrd)]
 #[allow(missing_docs)]
-pub struct DeltaCertificateDescriptor{
+pub struct DeltaCertificateDescriptor {
     pub serial: SerialNumber,
 
     #[asn1(context_specific = "0", tag_mode = "IMPLICIT", optional = "true")]
