@@ -1,3 +1,4 @@
+use std::io;
 use crate::args::ChamCertArgs;
 use crate::base::generate_base;
 use crate::check::check;
@@ -15,13 +16,13 @@ pub mod request;
 pub mod utils;
 
 /// Error type for chamcert
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Debug)]
 #[non_exhaustive]
 #[allow(dead_code)]
 pub enum Error {
     BadInput,
     Config,
-    Io,
+    Io(io::Error),
     Unrecognized,
     ParseError,
     /// Asn1Error is used to propagate error information from the x509 crate.
@@ -33,6 +34,11 @@ pub enum Error {
 impl From<der::Error> for Error {
     fn from(err: der::Error) -> Error {
         Error::Asn1(err)
+    }
+}
+impl From<io::Error> for Error {
+    fn from(err: io::Error) -> Error {
+        Error::Io(err)
     }
 }
 

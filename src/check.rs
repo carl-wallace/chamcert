@@ -52,7 +52,10 @@ fn reconstruct(base: &Certificate) -> Result<Certificate> {
     // signature field of the Delta Certificate template with the value of the DCD extension's
     // signature field.
     if let Some(sig) = dcd.sig_alg {
-        initial_delta.tbs_certificate.signature = sig;
+        initial_delta.tbs_certificate.signature = sig.clone();
+
+        // this field appears to be missing in the steps
+        initial_delta.signature_algorithm = sig;
     }
 
     // If the DCD extension contains a value for the issuer field, then replace the value of the

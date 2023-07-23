@@ -1,18 +1,18 @@
 use crate::args::ChamCertArgs;
 use crate::dcd::{DeltaCertificateDescriptor, ID_CE_DELTA_CERTIFICATE_DESCRIPTOR};
-use crate::keygen::generate_keypair;
+use crate::keygen::{generate_keypair, is_ecdsa};
 use crate::utils::{generate_signature, get_file_as_byte_vec};
 use crate::{Error, Result};
-use const_oid::db::rfc5912::{ECDSA_WITH_SHA_256, SECP_256_R_1};
 use der::asn1::{BitString, OctetString, UtcTime};
 use der::pem::LineEnding;
-use der::{Decode, Encode, EncodePem};
+use der::{AnyRef, Decode, Encode, EncodePem};
 use rand_core::OsRng;
 use rand_core::RngCore;
-use spki::{AlgorithmIdentifierOwned, SubjectPublicKeyInfoOwned};
+use spki::SubjectPublicKeyInfoOwned;
 use std::fs;
 use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use const_oid::ObjectIdentifier;
 use x509_cert::ext::Extension;
 use x509_cert::serial_number::SerialNumber;
 use x509_cert::time::{Time, Validity};
@@ -39,13 +39,16 @@ pub fn generate_base(args: &ChamCertArgs) -> Result<()> {
     let ca_cert = Certificate::from_der(&ca_cert_bytes)?;
     let delta_cert = Certificate::from_der(&delta_cert_bytes)?;
 
-    let template_cert = match &args.template_cert {
+    let mut template_cert = match &args.template_cert {
         Some(template_cert) => {
             let template_cert_bytes = get_file_as_byte_vec(Path::new(template_cert))?;
             Certificate::from_der(&template_cert_bytes)?
         }
         None => delta_cert.clone(),
     };
+
+    template_cert.tbs_certificate.signature = ca_cert.tbs_certificate.signature.clone();
+    template_cert.tbs_certificate.issuer = ca_cert.tbs_certificate.issuer.clone();
 
     let ten_years_duration = Duration::from_secs(365 * 24 * 60 * 60 * 10);
     let ten_years_time = match SystemTime::now().checked_add(ten_years_duration) {
@@ -129,9 +132,26 @@ pub fn generate_base(args: &ChamCertArgs) -> Result<()> {
     let mut spki_algs = vec![];
     let mut signing_algs = vec![];
     let mut spkis = vec![];
+
+    let pk_alg = match is_ecdsa(&ca_cert.tbs_certificate.subject_public_key_info.algorithm.oid) {
+        true => {
+            if let Some(params) = &ca_cert.tbs_certificate.subject_public_key_info.algorithm.parameters {
+                let ar: AnyRef<'_> = match params.try_into() {
+                    Ok(ar) => ar,
+                    Err(_e) => return Err(Error::MissingParameter)
+                };
+                ObjectIdentifier::try_from(ar)?
+            }
+            else {
+                return Err(Error::MissingParameter)
+            }
+        }
+        false => ca_cert.tbs_certificate.subject_public_key_info.algorithm.oid.clone()
+    };
+
     generate_keypair(
-        SECP_256_R_1,
-        ECDSA_WITH_SHA_256,
+        pk_alg,
+        ca_cert.signature_algorithm.oid.clone(),
         &mut skids,
         &mut signing_keys,
         &mut spki_algs,
@@ -153,10 +173,7 @@ pub fn generate_base(args: &ChamCertArgs) -> Result<()> {
         extn_value: OctetString::new(dcd.to_der()?)?,
     });
 
-    let sig_alg = AlgorithmIdentifierOwned {
-        oid: ECDSA_WITH_SHA_256,
-        parameters: None,
-    };
+    let sig_alg = ca_cert.tbs_certificate.signature.clone();
     let tbs_certificate = TbsCertificate {
         version: Version::V3,
         serial_number: serial,
@@ -171,7 +188,7 @@ pub fn generate_base(args: &ChamCertArgs) -> Result<()> {
     };
 
     let sig = generate_signature(
-        &ECDSA_WITH_SHA_256,
+        &sig_alg.oid,
         &ca_key_bytes,
         &tbs_certificate.to_der()?,
     );

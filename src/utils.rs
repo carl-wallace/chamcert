@@ -2,7 +2,6 @@
 
 use crate::args::ChamCertArgs;
 use crate::keygen::*;
-use crate::Error;
 use const_oid::ObjectIdentifier;
 use log::LevelFilter;
 use log4rs::{
@@ -11,7 +10,7 @@ use log4rs::{
     encode::pattern::PatternEncoder,
 };
 use p256::ecdsa::{signature::Signer, Signature};
-use p256::pkcs8::DecodePrivateKey;
+
 #[cfg(feature = "pqc")]
 use pqcrypto_dilithium::*;
 #[cfg(feature = "pqc")]
@@ -24,6 +23,8 @@ use pqcrypto_traits::sign::SecretKey;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use der::Decode;
+use pqckeys::oak::PrivateKeyInfo;
 use subtle_encoding::hex;
 
 /// Configures logging per logging-related elements of the provided [PbYkArgs] instance
@@ -69,19 +70,24 @@ pub(crate) fn configure_logging(args: &ChamCertArgs) {
 /// `get_file_as_byte_vec` provides support for reading artifacts from file when PITTv3 is built using
 /// the `std_app` feature.
 pub fn get_file_as_byte_vec(filename: &Path) -> crate::Result<Vec<u8>> {
-    match File::open(filename) {
-        Ok(mut f) => match std::fs::metadata(filename) {
-            Ok(metadata) => {
-                let mut buffer = vec![0; metadata.len() as usize];
-                match f.read_exact(&mut buffer) {
-                    Ok(_) => Ok(buffer),
-                    Err(_e) => Err(Error::Unrecognized),
-                }
-            }
-            Err(_e) => Err(Error::Unrecognized),
-        },
-        Err(_e) => Err(Error::Unrecognized),
-    }
+    // match File::open(filename) {
+    //     Ok(mut f) => match std::fs::metadata(filename) {
+    //         Ok(metadata) => {
+    //             let mut buffer = vec![0; metadata.len() as usize];
+    //             match f.read_exact(&mut buffer) {
+    //                 Ok(_) => Ok(buffer),
+    //                 Err(_e) => Err(Error::Unrecognized),
+    //             }
+    //         }
+    //         Err(_e) => Err(Error::Unrecognized),
+    //     },
+    //     Err(e) => Err(Error::Unrecognized),
+    // }
+    let mut f = File::open(filename)?;
+    let metadata = std::fs::metadata(filename)?;
+    let mut buffer = vec![0; metadata.len() as usize];
+    f.read_exact(&mut buffer)?;
+    Ok(buffer)
 }
 
 /// Takes a buffer and returns a String containing an ASCII hex representation of the buffer's contents
@@ -97,9 +103,16 @@ pub fn buffer_to_hex(buffer: &[u8]) -> String {
 
 pub fn generate_signature(
     spki_algorithm: &ObjectIdentifier,
-    signing_key_bytes: &[u8],
+    private_key_info_bytes: &[u8],
     tbs_cert: &[u8],
 ) -> Vec<u8> {
+
+    let oak = match PrivateKeyInfo::from_der(&private_key_info_bytes) {
+        Ok(oak) => oak,
+        Err(_e) => panic!()
+    };
+    let signing_key_bytes = oak.private_key.as_bytes();
+
     let s = if is_diluthium2(spki_algorithm) {
         let sk = SecretKey::from_bytes(signing_key_bytes).unwrap();
         let sm = dilithium2::detached_sign(tbs_cert, &sk);
@@ -195,11 +208,7 @@ pub fn generate_signature(
         let sm = sphincssha256256ssimple::detached_sign(tbs_cert, &sk);
         sm.as_bytes().to_vec()
     } else if is_ecdsa(spki_algorithm) {
-        //todo don't require p256 CA signing
-        let secret_key = p256::SecretKey::from_pkcs8_der(signing_key_bytes).unwrap();
-        let signing_key = ecdsa::SigningKey::from(secret_key);
-
-        //let signing_key = SigningKey::from_bytes(signing_key_bytes).unwrap();
+        let signing_key = p256::ecdsa::SigningKey::from_bytes(signing_key_bytes.into()).unwrap();
 
         let ecsignature: Signature = signing_key.sign(tbs_cert);
         let derecsignature = ecsignature.to_der();
