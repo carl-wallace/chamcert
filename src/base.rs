@@ -1,12 +1,11 @@
 use crate::args::ChamCertArgs;
 use crate::dcd::{DeltaCertificateDescriptor, ID_CE_DELTA_CERTIFICATE_DESCRIPTOR};
-use crate::keygen::{generate_keypair, is_ecdsa};
-use crate::utils::{generate_signature, get_file_as_byte_vec};
+use crate::keygen::generate_keypair;
+use crate::utils::{generate_signature, get_file_as_byte_vec, get_public_key_alg};
 use crate::{Error, Result};
-use const_oid::ObjectIdentifier;
 use der::asn1::{BitString, OctetString, UtcTime};
 use der::pem::LineEnding;
-use der::{AnyRef, Decode, Encode, EncodePem};
+use der::{Decode, Encode, EncodePem};
 use rand_core::OsRng;
 use rand_core::RngCore;
 use spki::SubjectPublicKeyInfoOwned;
@@ -126,44 +125,13 @@ pub fn generate_base(args: &ChamCertArgs) -> Result<()> {
     // The certification authority then adds the computed DCD extension to the to-be-signed Base
     // Certificate and signs the Base Certificate.
 
-    // Just doing EC in the base for now: SECP_256_R_1 and ECDSA_WITH_SHA_256
     let mut skids = vec![];
     let mut signing_keys = vec![];
     let mut spki_algs = vec![];
     let mut signing_algs = vec![];
     let mut spkis = vec![];
 
-    let pk_alg = match is_ecdsa(
-        &ca_cert
-            .tbs_certificate
-            .subject_public_key_info
-            .algorithm
-            .oid,
-    ) {
-        true => {
-            if let Some(params) = &ca_cert
-                .tbs_certificate
-                .subject_public_key_info
-                .algorithm
-                .parameters
-            {
-                let ar: AnyRef<'_> = match params.try_into() {
-                    Ok(ar) => ar,
-                    Err(_e) => return Err(Error::MissingParameter),
-                };
-                ObjectIdentifier::try_from(ar)?
-            } else {
-                return Err(Error::MissingParameter);
-            }
-        }
-        false => {
-            ca_cert
-                .tbs_certificate
-                .subject_public_key_info
-                .algorithm
-                .oid
-        }
-    };
+    let pk_alg = get_public_key_alg(&ca_cert)?;
 
     generate_keypair(
         pk_alg,

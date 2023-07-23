@@ -24,12 +24,13 @@ pub enum Error {
     Config,
     Io(io::Error),
     Unrecognized,
-    ParseError,
+    Parse,
     /// Asn1Error is used to propagate error information from the x509 crate.
     Asn1(der::Error),
     Signature,
     MissingParameter,
     KeyError,
+    Oid(const_oid::Error),
 }
 impl From<der::Error> for Error {
     fn from(err: der::Error) -> Error {
@@ -39,6 +40,11 @@ impl From<der::Error> for Error {
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Error {
         Error::Io(err)
+    }
+}
+impl From<const_oid::Error> for Error {
+    fn from(err: const_oid::Error) -> Error {
+        Error::Oid(err)
     }
 }
 

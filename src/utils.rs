@@ -1,4 +1,4 @@
-//! Utility functions used by the pbyk utility
+//! Utility functions used by the chamcert utility
 
 use crate::args::ChamCertArgs;
 use crate::keygen::*;
@@ -11,7 +11,8 @@ use log4rs::{
 };
 use p256::ecdsa::{signature::Signer, Signature};
 
-use der::Decode;
+use crate::Error;
+use der::{AnyRef, Decode};
 use pqckeys::oak::PrivateKeyInfo;
 #[cfg(feature = "pqc")]
 use pqcrypto_dilithium::*;
@@ -26,8 +27,9 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use subtle_encoding::hex;
+use x509_cert::Certificate;
 
-/// Configures logging per logging-related elements of the provided [PbYkArgs] instance
+/// Configures logging per logging-related elements of the provided [ChamCertArgs] instance
 pub(crate) fn configure_logging(args: &ChamCertArgs) {
     let mut logging_configured = false;
 
@@ -70,19 +72,6 @@ pub(crate) fn configure_logging(args: &ChamCertArgs) {
 /// `get_file_as_byte_vec` provides support for reading artifacts from file when PITTv3 is built using
 /// the `std_app` feature.
 pub fn get_file_as_byte_vec(filename: &Path) -> crate::Result<Vec<u8>> {
-    // match File::open(filename) {
-    //     Ok(mut f) => match std::fs::metadata(filename) {
-    //         Ok(metadata) => {
-    //             let mut buffer = vec![0; metadata.len() as usize];
-    //             match f.read_exact(&mut buffer) {
-    //                 Ok(_) => Ok(buffer),
-    //                 Err(_e) => Err(Error::Unrecognized),
-    //             }
-    //         }
-    //         Err(_e) => Err(Error::Unrecognized),
-    //     },
-    //     Err(e) => Err(Error::Unrecognized),
-    // }
     let mut f = File::open(filename)?;
     let metadata = std::fs::metadata(filename)?;
     let mut buffer = vec![0; metadata.len() as usize];
@@ -216,4 +205,27 @@ pub fn generate_signature(
         panic!()
     };
     s
+}
+
+pub(crate) fn get_public_key_alg(cert: &Certificate) -> crate::Result<ObjectIdentifier> {
+    let pk_alg = match is_ecdsa(&cert.tbs_certificate.subject_public_key_info.algorithm.oid) {
+        true => {
+            if let Some(params) = &cert
+                .tbs_certificate
+                .subject_public_key_info
+                .algorithm
+                .parameters
+            {
+                let ar: AnyRef<'_> = match params.try_into() {
+                    Ok(ar) => ar,
+                    Err(_e) => return Err(Error::MissingParameter),
+                };
+                ObjectIdentifier::try_from(ar)?
+            } else {
+                return Err(Error::MissingParameter);
+            }
+        }
+        false => cert.tbs_certificate.subject_public_key_info.algorithm.oid,
+    };
+    Ok(pk_alg)
 }

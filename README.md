@@ -34,3 +34,4 @@ $ ./target/release/chamcert -r ./tests/artifacts/ValidCertificatePathTest1EE.crt
 Reconstructed certificate matches the reference.
 ```
 
+The gencsrs.sh script (and corresponding output) shows how to exercise the 100% untested CSR generation support.

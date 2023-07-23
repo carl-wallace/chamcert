@@ -69,6 +69,32 @@ pub struct ChamCertArgs {
     )]
     pub base: Option<String>,
 
+    // ***********
+    /// Object identifier identifying the public key algorithm for the delta certificate in dot
+    /// notation form, i.e., 1.3.6.1.4.1.2.267.11.4.4.
+    #[clap(
+        short = 'a',
+        long,
+        action,
+        help_heading = "Chameleon Certificate Signing Request Generation",
+        requires = "template_cert",
+        conflicts_with = "base",
+        conflicts_with = "check"
+    )]
+    pub delta_pk_alg: Option<String>,
+
+    /// Object identifier identifying the signature algorithm for the self-signed delta certificate
+    /// in dot notation form.
+    #[clap(
+        long,
+        action,
+        help_heading = "Chameleon Certificate Signing Request Generation",
+        requires = "template_cert",
+        conflicts_with = "base",
+        conflicts_with = "check"
+    )]
+    pub delta_sig_alg: Option<String>,
+
     /// Full path and filename of file containing certificate that serves as a template for CSR
     /// generation (only the public key will be changed)
     #[clap(
@@ -92,6 +118,7 @@ pub struct ChamCertArgs {
     )]
     pub request: Option<String>,
 
+    // ***********
     /// Full path and filename of certificate that should match the certificate rehydrated from the
     /// check certificate
     #[clap(

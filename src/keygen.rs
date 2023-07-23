@@ -9,7 +9,7 @@ use pqcrypto_sphincsplus::*;
 #[cfg(feature = "pqc")]
 use pqcrypto_traits::sign::{PublicKey as OtherPublicKey, SecretKey};
 
-use der::asn1::{BitString, OctetStringRef};
+use der::asn1::{BitString, OctetString, OctetStringRef};
 use der::{Any, Decode, Encode};
 
 use p256::ecdsa::{SigningKey, VerifyingKey};
@@ -25,6 +25,7 @@ use certval::{
     PKIXALG_ECDSA_WITH_SHA512, PKIXALG_EC_PUBLIC_KEY, PKIXALG_SECP256R1,
 };
 use const_oid::ObjectIdentifier;
+use pqckeys::oak::OneAsymmetricKey;
 use pqckeys::pqc_oids::*;
 
 pub fn is_ecdsa(oid: &ObjectIdentifier) -> bool {
@@ -148,7 +149,16 @@ pub fn generate_keypair(
             skids.push(enc_skid);
 
             let privkey2 = signing_key.to_bytes();
-            signing_keys.push(privkey2.to_vec());
+
+            let oak_leaf = OneAsymmetricKey {
+                version: pqckeys::oak::Version::V2,
+                private_key_alg: spki_algorithm.clone(),
+                private_key: OctetString::new(privkey2.as_slice()).unwrap(),
+                attributes: None,
+                public_key: None,
+            };
+            let oak_der = oak_leaf.to_der().unwrap();
+            signing_keys.push(oak_der);
 
             let spki = SubjectPublicKeyInfoOwned {
                 algorithm: spki_algorithm,

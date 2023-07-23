@@ -60,3 +60,43 @@ impl AsExtension for DeltaCertificateDescriptor {
 impl AssociatedOid for DeltaCertificateDescriptor {
     const OID: ObjectIdentifier = ID_CE_DELTA_CERTIFICATE_DESCRIPTOR;
 }
+
+/// id-at-deltaCertificateRequest OBJECT IDENTIFIER ::= {
+///    joint-iso-itu-t(2) country(16) us(840) organization(1)
+///    entrust(114027) 80 6 2
+/// }
+pub const ID_CE_DELTA_CERTIFICATE_REQUEST: ObjectIdentifier =
+    ObjectIdentifier::new_unwrap("2.16.840.1.114027.80.6.2");
+
+/// DeltaCertificateRequestValue ::= SEQUENCE {
+///   subject               [0] IMPLICIT Name OPTIONAL,
+///   subjectPKInfo         SubjectPublicKeyInfo,
+///   extensions            [1] IMPLICIT Extensions{CertExtensions}
+///        OPTIONAL,
+///   signatureAlgorithm    [2] IMPLICIT AlgorithmIdentifier
+///        {SIGNATURE_ALGORITHM, {...}} OPTIONAL
+/// }
+#[derive(Clone, Debug, Eq, PartialEq, Sequence, ValueOrd)]
+#[allow(missing_docs)]
+pub struct DeltaCertificateRequestValue {
+    #[asn1(context_specific = "0", tag_mode = "IMPLICIT", optional = "true")]
+    pub subject: Option<Name>,
+
+    pub spki: SubjectPublicKeyInfoOwned,
+
+    #[asn1(context_specific = "1", tag_mode = "IMPLICIT", optional = "true")]
+    pub exts: Option<Extensions>,
+
+    #[asn1(context_specific = "2", tag_mode = "IMPLICIT", optional = "true")]
+    pub sig_alg: Option<AlgorithmIdentifierOwned>,
+}
+
+/// id-at-deltaCertificateRequestSignature OBJECT IDENTIFIER ::= {
+///    joint-iso-itu-t(2) country(16) us(840) organization(1)
+///    entrust(114027) 80 6 3
+/// }
+pub const ID_CE_DELTA_CERTIFICATE_SIGNATURE: ObjectIdentifier =
+    ObjectIdentifier::new_unwrap("2.16.840.1.114027.80.6.3");
+
+/// DeltaCertificateRequestSignatureValue ::= BIT STRING
+pub type DeltaCertificateRequestSignatureValue = BitString;
