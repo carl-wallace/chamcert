@@ -3,6 +3,7 @@ use crate::dcd::{DeltaCertificateDescriptor, ID_CE_DELTA_CERTIFICATE_DESCRIPTOR}
 use crate::keygen::{generate_keypair, is_ecdsa};
 use crate::utils::{generate_signature, get_file_as_byte_vec};
 use crate::{Error, Result};
+use const_oid::ObjectIdentifier;
 use der::asn1::{BitString, OctetString, UtcTime};
 use der::pem::LineEnding;
 use der::{AnyRef, Decode, Encode, EncodePem};
@@ -12,7 +13,6 @@ use spki::SubjectPublicKeyInfoOwned;
 use std::fs;
 use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use const_oid::ObjectIdentifier;
 use x509_cert::ext::Extension;
 use x509_cert::serial_number::SerialNumber;
 use x509_cert::time::{Time, Validity};
@@ -133,25 +133,41 @@ pub fn generate_base(args: &ChamCertArgs) -> Result<()> {
     let mut signing_algs = vec![];
     let mut spkis = vec![];
 
-    let pk_alg = match is_ecdsa(&ca_cert.tbs_certificate.subject_public_key_info.algorithm.oid) {
+    let pk_alg = match is_ecdsa(
+        &ca_cert
+            .tbs_certificate
+            .subject_public_key_info
+            .algorithm
+            .oid,
+    ) {
         true => {
-            if let Some(params) = &ca_cert.tbs_certificate.subject_public_key_info.algorithm.parameters {
+            if let Some(params) = &ca_cert
+                .tbs_certificate
+                .subject_public_key_info
+                .algorithm
+                .parameters
+            {
                 let ar: AnyRef<'_> = match params.try_into() {
                     Ok(ar) => ar,
-                    Err(_e) => return Err(Error::MissingParameter)
+                    Err(_e) => return Err(Error::MissingParameter),
                 };
                 ObjectIdentifier::try_from(ar)?
-            }
-            else {
-                return Err(Error::MissingParameter)
+            } else {
+                return Err(Error::MissingParameter);
             }
         }
-        false => ca_cert.tbs_certificate.subject_public_key_info.algorithm.oid.clone()
+        false => {
+            ca_cert
+                .tbs_certificate
+                .subject_public_key_info
+                .algorithm
+                .oid
+        }
     };
 
     generate_keypair(
         pk_alg,
-        ca_cert.signature_algorithm.oid.clone(),
+        ca_cert.signature_algorithm.oid,
         &mut skids,
         &mut signing_keys,
         &mut spki_algs,
@@ -187,11 +203,7 @@ pub fn generate_base(args: &ChamCertArgs) -> Result<()> {
         extensions: Some(exts),
     };
 
-    let sig = generate_signature(
-        &sig_alg.oid,
-        &ca_key_bytes,
-        &tbs_certificate.to_der()?,
-    );
+    let sig = generate_signature(&sig_alg.oid, &ca_key_bytes, &tbs_certificate.to_der()?);
     let cert = Certificate {
         tbs_certificate,
         signature_algorithm: sig_alg,

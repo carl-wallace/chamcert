@@ -1,10 +1,10 @@
-use std::io;
 use crate::args::ChamCertArgs;
 use crate::base::generate_base;
 use crate::check::check;
 use crate::request::generate_request;
 use crate::utils::configure_logging;
 use clap::Parser;
+use std::io;
 
 pub mod args;
 pub mod base;

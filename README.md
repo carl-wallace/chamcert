@@ -3,8 +3,8 @@
 Work-in-progress utility to generate artifacts containing a [deltaCertificateDescriptor](https://datatracker.ietf.org/doc/html/draft-bonnell-lamps-chameleon-certs-01) extension and to parse
 artifacts containing the extension and reconstruct a certificate from the extension.
 
-At present, base certificates can be generated (albeit only with p256 signatures) and parsed, with the 
-reconstructed certificate compared to a reference value. TODO items include support for other signature algorithms,
+At present, base certificates can be generated and parsed, with the 
+reconstructed certificate compared to a reference value. TODO items include support for
 certificate verification, and CSR generation.
 
 A sample invocation of the tool is below. The first command takes a CA key, a CA cert, a delta cert and a destination to receive a base certificate. The second takes a reference (same as delta in first command) and a base from which to reconstruct a cert to compare to the reference.

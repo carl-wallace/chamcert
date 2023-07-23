@@ -11,6 +11,8 @@ use log4rs::{
 };
 use p256::ecdsa::{signature::Signer, Signature};
 
+use der::Decode;
+use pqckeys::oak::PrivateKeyInfo;
 #[cfg(feature = "pqc")]
 use pqcrypto_dilithium::*;
 #[cfg(feature = "pqc")]
@@ -23,8 +25,6 @@ use pqcrypto_traits::sign::SecretKey;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use der::Decode;
-use pqckeys::oak::PrivateKeyInfo;
 use subtle_encoding::hex;
 
 /// Configures logging per logging-related elements of the provided [PbYkArgs] instance
@@ -106,10 +106,9 @@ pub fn generate_signature(
     private_key_info_bytes: &[u8],
     tbs_cert: &[u8],
 ) -> Vec<u8> {
-
-    let oak = match PrivateKeyInfo::from_der(&private_key_info_bytes) {
+    let oak = match PrivateKeyInfo::from_der(private_key_info_bytes) {
         Ok(oak) => oak,
-        Err(_e) => panic!()
+        Err(_e) => panic!(),
     };
     let signing_key_bytes = oak.private_key.as_bytes();
 
