@@ -2,8 +2,14 @@ use crate::args::ChamCertArgs;
 use crate::dcd::{DeltaCertificateDescriptor, ID_CE_DELTA_CERTIFICATE_DESCRIPTOR};
 use crate::utils::{buffer_to_hex, get_file_as_byte_vec};
 use crate::{Error, Result};
+use certval::{
+    populate_5280_pki_environment, verify_signature_message_pqcrypto, verify_signatures,
+    CertificateChain, CertificationPath, CertificationPathResults, CertificationPathSettings,
+    PDVCertificate, PDVTrustAnchorChoice, ParsedExtensions, PkiEnvironment,
+};
 use der::{Decode, Encode};
 use std::path::Path;
+use x509_cert::anchor::TrustAnchorChoice;
 use x509_cert::Certificate;
 
 fn get_dcd(cert: &Certificate) -> Result<DeltaCertificateDescriptor> {
@@ -116,8 +122,8 @@ fn reconstruct(base: &Certificate) -> Result<Certificate> {
     Ok(initial_delta)
 }
 
-pub fn check(args: &ChamCertArgs) -> Result<()> {
-    let base_cert_bytes = match &args.check {
+pub fn delta_check(args: &ChamCertArgs) -> Result<()> {
+    let base_cert_bytes = match &args.delta_check {
         Some(check) => get_file_as_byte_vec(Path::new(check)),
         None => return Err(Error::MissingParameter),
     }?;
@@ -127,6 +133,35 @@ pub fn check(args: &ChamCertArgs) -> Result<()> {
     }?;
 
     let base_cert = Certificate::from_der(&base_cert_bytes)?;
+
+    if let Some(ca_cert_file) = &args.ca_cert {
+        let ca_cert_bytes = get_file_as_byte_vec(Path::new(ca_cert_file))?;
+        let ca_cert = Certificate::from_der(&ca_cert_bytes)?;
+        let ta = TrustAnchorChoice::Certificate(ca_cert);
+        let pdv_ta = PDVTrustAnchorChoice {
+            encoded_ta: ca_cert_bytes,
+            decoded_ta: ta,
+            metadata: None,
+            parsed_extensions: ParsedExtensions::new(),
+        };
+        let pdv_target = PDVCertificate {
+            encoded_cert: base_cert_bytes,
+            decoded_cert: base_cert.clone(),
+            metadata: None,
+            parsed_extensions: Default::default(),
+        };
+        let cc = CertificateChain::new();
+        let mut cp = CertificationPath::new(&pdv_ta, cc, &pdv_target);
+
+        let mut pe = PkiEnvironment::default();
+        populate_5280_pki_environment(&mut pe);
+        #[cfg(feature = "pqc")]
+        pe.add_verify_signature_message_callback(verify_signature_message_pqcrypto);
+        let cps = CertificationPathSettings::new();
+        let mut cpr = CertificationPathResults::new();
+        verify_signatures(&pe, &cps, &mut cp, &mut cpr)?;
+    }
+
     let reconstructed = reconstruct(&base_cert)?;
     let reconstructed_bytes = reconstructed.to_der()?;
     if reconstructed_bytes != delta_cert_bytes {

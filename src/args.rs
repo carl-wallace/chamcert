@@ -41,7 +41,8 @@ pub struct ChamCertArgs {
         long,
         action,
         help_heading = "Chameleon Certificate Generation",
-        requires = "base"
+        conflicts_with = "request_check",
+        conflicts_with = "request"
     )]
     pub ca_cert: Option<String>,
 
@@ -62,7 +63,8 @@ pub struct ChamCertArgs {
         action,
         help_heading = "Chameleon Certificate Generation",
         conflicts_with = "request",
-        conflicts_with = "check",
+        conflicts_with = "delta_check",
+        conflicts_with = "request_check",
         requires = "delta",
         requires = "ca_cert",
         requires = "ca_key"
@@ -79,7 +81,8 @@ pub struct ChamCertArgs {
         help_heading = "Chameleon Certificate Signing Request Generation",
         requires = "template_cert",
         conflicts_with = "base",
-        conflicts_with = "check"
+        conflicts_with = "delta_check",
+        conflicts_with = "request_check"
     )]
     pub delta_pk_alg: Option<String>,
 
@@ -91,7 +94,8 @@ pub struct ChamCertArgs {
         help_heading = "Chameleon Certificate Signing Request Generation",
         requires = "template_cert",
         conflicts_with = "base",
-        conflicts_with = "check"
+        conflicts_with = "delta_check",
+        conflicts_with = "request_check"
     )]
     pub delta_sig_alg: Option<String>,
 
@@ -114,7 +118,8 @@ pub struct ChamCertArgs {
         help_heading = "Chameleon Certificate Signing Request Generation",
         requires = "template_cert",
         conflicts_with = "base",
-        conflicts_with = "check"
+        conflicts_with = "delta_check",
+        conflicts_with = "request_check"
     )]
     pub request: Option<String>,
 
@@ -126,12 +131,12 @@ pub struct ChamCertArgs {
         long,
         action,
         help_heading = "Chameleon Certificate Extension Check",
-        requires = "check"
+        requires = "delta_check"
     )]
     pub reference: Option<String>,
 
-    /// Full path and filename of file to receive freshly generated base certificate containing a
-    /// deltaCertificateDescriptor extension
+    /// Full path and filename of file of base certificate containing a deltaCertificateDescriptor
+    /// extension to reconstruct and compare to reference
     #[clap(
         short = 'v',
         long,
@@ -141,5 +146,18 @@ pub struct ChamCertArgs {
         conflicts_with = "base",
         conflicts_with = "request"
     )]
-    pub check: Option<String>,
+    pub delta_check: Option<String>,
+
+    // ***********
+    /// Full path and filename of file containing CSR with deltaCertificateRequestSignature to check
+    #[clap(
+        short = 'u',
+        long,
+        action,
+        help_heading = "Chameleon Certificate Signing Request Signature Check",
+        conflicts_with = "base",
+        conflicts_with = "request",
+        conflicts_with = "delta_check"
+    )]
+    pub request_check: Option<String>,
 }

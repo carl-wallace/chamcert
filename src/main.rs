@@ -1,18 +1,20 @@
 use crate::args::ChamCertArgs;
 use crate::base::generate_base;
-use crate::check::check;
+use crate::delta_check::delta_check;
 use crate::request::generate_request;
+use crate::request_check::request_check;
 use crate::utils::configure_logging;
 use clap::Parser;
 use std::io;
 
 pub mod args;
 pub mod base;
-pub mod check;
 pub mod dcd;
+pub mod delta_check;
 pub mod keygen;
 pub mod pqc_oids;
 pub mod request;
+pub mod request_check;
 pub mod utils;
 
 /// Error type for chamcert
@@ -31,6 +33,7 @@ pub enum Error {
     MissingParameter,
     KeyError,
     Oid(const_oid::Error),
+    Certval(certval::Error),
 }
 impl From<der::Error> for Error {
     fn from(err: der::Error) -> Error {
@@ -45,6 +48,11 @@ impl From<io::Error> for Error {
 impl From<const_oid::Error> for Error {
     fn from(err: const_oid::Error) -> Error {
         Error::Oid(err)
+    }
+}
+impl From<certval::Error> for Error {
+    fn from(err: certval::Error) -> Error {
+        Error::Certval(err)
     }
 }
 
@@ -63,8 +71,12 @@ fn main() {
         if let Err(e) = generate_request(&args) {
             println!("Failed: {:?}", e);
         }
-    } else if args.check.is_some() {
-        if let Err(e) = check(&args) {
+    } else if args.delta_check.is_some() {
+        if let Err(e) = delta_check(&args) {
+            println!("Failed: {:?}", e);
+        }
+    } else if args.request_check.is_some() {
+        if let Err(e) = request_check(&args) {
             println!("Failed: {:?}", e);
         }
     } else {
